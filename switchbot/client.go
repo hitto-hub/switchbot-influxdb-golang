@@ -1,0 +1,72 @@
+package switchbot
+
+import (
+    "encoding/json"
+    "fmt"
+    "io/ioutil"
+    "net/http"
+    "crypto/hmac"
+    "crypto/sha256"
+    "encoding/base64"
+    "strconv"
+    "time"
+)
+
+const apiUrl = "https://api.switch-bot.com/v1.1/devices"
+
+func FetchDevices(apiToken, apiSecret string) ([]Device, error) {
+    t := strconv.FormatInt(time.Now().Unix()*1000, 10)
+    nonce := "requestID"
+    stringToSign := fmt.Sprintf("%s%s%s", apiToken, t, nonce)
+    mac := hmac.New(sha256.New, []byte(apiSecret))
+    mac.Write([]byte(stringToSign))
+    sign := base64.StdEncoding.EncodeToString(mac.Sum(nil))
+
+    client := &http.Client{}
+    req, err := http.NewRequest("GET", apiUrl, nil)
+    if err != nil {
+        return nil, err
+    }
+    req.Header.Set("Authorization", "Bearer "+apiToken)
+    req.Header.Set("T", t)
+    req.Header.Set("Sign", sign)
+    req.Header.Set("Nonce", nonce)
+
+    // リクエスト情報を出力
+    fmt.Printf("Request: %s %s\n", req.Method, req.URL)
+    fmt.Printf("Authorization: Bearer %s\n", apiToken)
+    fmt.Printf("T: %s\n", t)
+    fmt.Printf("Sign: %s\n", sign)
+    fmt.Printf("Nonce: %s\n", nonce)
+
+    resp, err := client.Do(req)
+    if err != nil {
+        return nil, err
+    }
+    defer resp.Body.Close()
+
+    // レスポンスのステータスコードを出力
+    fmt.Printf("Response Status: %s\n", resp.Status)
+
+    body, err := ioutil.ReadAll(resp.Body)
+    if err != nil {
+        return nil, err
+    }
+
+    // レスポンスボディを出力
+    fmt.Printf("Response Body: %s\n", body)
+
+    var devicesResponse DevicesResponse
+    if err := json.Unmarshal(body, &devicesResponse); err != nil {
+        return nil, err
+    }
+
+    fmt.Printf("DevicesResponse: %+v\n", devicesResponse)
+
+    var deviceList DeviceList
+    if err := json.Unmarshal(devicesResponse.Body, &deviceList); err != nil {
+        return nil, err
+    }
+
+    return deviceList.Devices, nil
+}
