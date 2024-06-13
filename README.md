@@ -1,5 +1,16 @@
 # switchbot-influxdb-golang
 
+## Dev
+```bash
+go run server/main.go
+```
+
+## Build
+
+```bash
+docker compose up -d
+```
+
 ## graphana
 
 ```flex
