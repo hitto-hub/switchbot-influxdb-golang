@@ -1,7 +1,9 @@
 package main
 
 import (
-    "fmt"
+    "log"
+    "time"
+
     "switchbot-influxdb/config"
     "switchbot-influxdb/influxdb"
     "switchbot-influxdb/switchbot"
@@ -12,21 +14,46 @@ func main() {
 
     devices, err := switchbot.FetchDevices(config.SwitchBotAPIToken, config.SwitchBotSecret)
     if err != nil {
-        fmt.Printf("Error fetching devices: %v\n", err)
-        return
+        log.Fatalf("Error fetching devices: %v\n", err)
     }
 
-    // デバイス情報をターミナルに出力
-    for _, device := range devices {
-        fmt.Printf("Device ID: %s, Name: %s, Type: %s\n", device.Id, device.Name, device.Type)
-    }
+    // デバイスリストの更新 (1日1回)
+    go func() {
+        for {
+            devices, err = switchbot.FetchDevices(config.SwitchBotAPIToken, config.SwitchBotSecret)
+            if err != nil {
+                log.Printf("Error updating device list: %v", err)
+            } else {
+                log.Println("Device list updated successfully")
+            }
+            time.Sleep(24 * time.Hour)
+        }
+    }()
 
-    // デバイス情報をInfluxDBに保存
-    err = influxdb.StoreDevices(config.InfluxDBConfig, devices)
-    if err != nil {
-        fmt.Printf("Error storing devices in InfluxDB: %v\n", err)
-        return
-    }
+    // 温湿度データの定期取得 (1分に1回)
+    ticker := time.NewTicker(1 * time.Minute)
+    defer ticker.Stop()
 
-    fmt.Println("Data successfully stored in InfluxDB")
+    for {
+        select {
+        case <-ticker.C:
+            for _, device := range devices {
+                if device.Type == "Meter" {
+                    status, err := switchbot.FetchDeviceStatus(config.SwitchBotAPIToken, config.SwitchBotSecret, device.Id)
+                    if err != nil {
+                        log.Printf("Error fetching device status: %v\n", err)
+                        continue
+                    }
+
+                    err = influxdb.StoreMeterData(config.InfluxDBConfig, device.Id, status["body"].(map[string]interface{}))
+                    if err != nil {
+                        log.Printf("Error storing meter data in InfluxDB: %v\n", err)
+                        continue
+                    }
+
+                    log.Printf("Successfully stored meter data for device ID: %s\n", device.Id)
+                }
+            }
+        }
+    }
 }
