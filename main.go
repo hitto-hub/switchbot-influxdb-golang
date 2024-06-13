@@ -34,25 +34,22 @@ func main() {
     ticker := time.NewTicker(1 * time.Minute)
     defer ticker.Stop()
 
-    for {
-        select {
-        case <-ticker.C:
-            for _, device := range devices {
-                if device.Type == "Meter" {
-                    status, err := switchbot.FetchDeviceStatus(config.SwitchBotAPIToken, config.SwitchBotSecret, device.Id)
-                    if err != nil {
-                        log.Printf("Error fetching device status: %v\n", err)
-                        continue
-                    }
-
-                    err = influxdb.StoreMeterData(config.InfluxDBConfig, device.Id, status["body"].(map[string]interface{}))
-                    if err != nil {
-                        log.Printf("Error storing meter data in InfluxDB: %v\n", err)
-                        continue
-                    }
-
-                    log.Printf("Successfully stored meter data for device ID: %s\n", device.Id)
+    for range ticker.C {
+        for _, device := range devices {
+            if device.Type == "Meter" {
+                status, err := switchbot.FetchDeviceStatus(config.SwitchBotAPIToken, config.SwitchBotSecret, device.Id)
+                if err != nil {
+                    log.Printf("Error fetching device status: %v\n", err)
+                    continue
                 }
+
+                err = influxdb.StoreMeterData(config.InfluxDBConfig, device.Id, status["body"].(map[string]interface{}))
+                if err != nil {
+                    log.Printf("Error storing meter data in InfluxDB: %v\n", err)
+                    continue
+                }
+
+                log.Printf("Successfully stored meter data for device ID: %s\n", device.Id)
             }
         }
     }
