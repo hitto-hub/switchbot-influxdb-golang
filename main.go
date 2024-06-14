@@ -43,7 +43,13 @@ func main() {
                     continue
                 }
 
-                err = influxdb.StoreMeterData(config.InfluxDBConfig, device.Id, status["body"].(map[string]interface{}))
+                body, ok := status["body"].(map[string]interface{})
+                if !ok {
+                    log.Printf("Error: device status body is nil or not in expected format for device ID: %s\n", device.Id)
+                    continue
+                }
+
+                err = influxdb.StoreMeterData(config.InfluxDBConfig, device.Id, body)
                 if err != nil {
                     log.Printf("Error storing meter data in InfluxDB: %v\n", err)
                     continue
