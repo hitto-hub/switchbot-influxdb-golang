@@ -1,5 +1,9 @@
 # switchbot-influxdb-golang
 
+## Description
+
+This is a simple project to get the temperature and humidity from a SwitchBot Thermometer and push it to an InfluxDB.
+
 ## Dev
 ```bash
 go run main.go
@@ -9,18 +13,4 @@ go run main.go
 
 ```bash
 docker compose up -d
-```
-
-## graphana
-
-```flex
-from(bucket: "データベース名")
-  |> range(start: -1h)
-  |> filter(fn: (r) => r._measurement == "meter" and r._field == "temperature")
-```
-
-```flex
-from(bucket: "データベース名")
-  |> range(start: -1h)
-  |> filter(fn: (r) => r._measurement == "meter" and r._field == "humidity")
 ```
