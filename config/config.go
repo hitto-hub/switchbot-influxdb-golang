@@ -2,8 +2,8 @@ package config
 
 import (
     "github.com/joho/godotenv"
-    "log"
     "os"
+    "fmt"
 )
 
 type Config struct {
@@ -19,13 +19,15 @@ type InfluxDBConfig struct {
     URL    string
 }
 
-func LoadConfig() Config {
+func LoadConfig() (Config, error) {
+    var config Config
+
     err := godotenv.Load()
     if err != nil {
-        log.Fatalf("Error loading .env file")
+        return config, fmt.Errorf(".envファイルの読み込みエラー: %v", err)
     }
 
-    return Config{
+    config = Config{
         SwitchBotAPIToken: os.Getenv("SWITCHBOT_API_TOKEN"),
         SwitchBotSecret:   os.Getenv("SWITCHBOT_SECRET"),
         InfluxDBConfig: InfluxDBConfig{
@@ -35,4 +37,6 @@ func LoadConfig() Config {
             URL:    os.Getenv("INFLUXDB_URL"),
         },
     }
+
+    return config, nil
 }
